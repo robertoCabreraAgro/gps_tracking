@@ -1,0 +1,160 @@
+<odoo>
+
+    <record id="view_gps_tracking_device_search" model="ir.ui.view">
+        <field name="name">gps.tracking.device.search</field>
+        <field name="model">gps.tracking.device</field>
+        <field name="arch" type="xml">
+            <search string="Buscar Dispositivo">
+                <field name="driver_name" />
+                <field name="model_id" />
+                <field name="license_plate" />
+                <field name="imei"/>
+            </search>
+        </field>
+    </record>
+
+    <!-- Vista en lista para dispositivos de GPS -->
+    <record id="view_gps_tracking_device_list" model="ir.ui.view">
+        <field name="name">gps.tracking.device.list</field>
+        <field name="model">gps.tracking.device</field>
+        <field name="arch" type="xml">
+            <list string="GPS Tracking Devices">
+                <field name="driver_name" />
+                <field name="model_id" />
+                <field name="license_plate" />
+                <field name="imei"/>
+            </list>
+        </field>
+    </record>
+
+    <!-- Vista Geoengine para dispositivos GPS -->
+    <record id="view_gps_tracking_device_geoengine" model="ir.ui.view">
+        <field name="name">gps.tracking.device.geoengine</field>
+        <field name="model">gps.tracking.device</field>
+        <field name="type">geoengine</field>
+        <field name="arch" type="xml">
+            <geoengine editable="1">
+                <field name="imei" invisible="1"></field>
+                <field name="speed" invisible="1"></field>
+                <field name="altitude" invisible="1"></field>
+                <field name="timestamp" invisible="1"></field>
+                <!-- Plantillas para info_box -->
+                <templates>
+                    <t t-name="info_box">
+                        <b>IMEI: <t t-esc="record.imei.value"/></b>
+                        <ul>
+                            <li>Timestamp: <t t-esc="record.timestamp.value"/></li>
+                            <li>Speed: <t t-esc="record.speed.value"/></li>
+                            <li>Altitude: <t t-esc="record.altitude.value"/></li>
+                        </ul>
+                    </t>
+                </templates>
+                <!-- Mostrar la ruta histórica -->
+                <field name="history_route"
+                        string="History Route"
+                        options='{"color": "#0000FF", "strokeWidth": 4}'/>
+                <!-- Mostrar los puntos de seguimiento -->
+                <field name="the_point" 
+                        string="Current Position" 
+                        options='{"fillColor": "#00FF00", "strokeColor": "#FF0000", "pointRadius": 8}'/>
+            </geoengine>
+        </field>
+    </record>
+
+    <!-- Vista en formulario para dispositivos de GPS -->
+    <record id="view_gps_tracking_device_form" model="ir.ui.view">
+        <field name="name">gps.tracking.device.form</field>
+        <field name="model">gps.tracking.device</field>
+        <field name="arch" type="xml">
+            <form string="GPS Tracking Device">
+                <sheet>
+                    <group>
+                        <group>
+                            <field name="imei"/>
+                            <field name="vehicle_id"/>
+                            <field name="color"/>
+                        </group>
+                        <group>
+                            <field name="last_point_id"/>
+                            <field name="timestamp"/>
+                            <field name="private" />
+                        </group>
+                    </group>
+                    <notebook>
+                        <page string="Tracking Points">
+                            <field name="allowed_tracking_point" default_order="timestamp desc">
+                                <list limit="50">
+                                    <field name="timestamp" />
+                                    <field name="latitude" />
+                                    <field name="longitude" />
+                                    <field name="altitude" />
+                                    <field name="angle" optional="hide" />
+                                    <field name="satellites" optional="hide" />
+                                    <field name="speed" />
+                                    <field name="wheel_speed" />
+                                    <field name="engine_speed_rpm" />
+                                    <field name="odometer" />
+                                    <field name="total_odometer" optional="hide" />
+                                    <field name="fuel_level" widget="progressbar" />
+                                    <field name="fuel_level_l" optional="hide" />
+                                    <field name="ignition" />
+                                    <field name="engine_temperature" optional="hide" />
+                                    <field name="engine_total_hours" optional="hide" />
+                                    <field name="engine_total_hours_counted" optional="hide" />
+                                    <field name="fuel_consumed_counted" optional="hide" />
+                                    <field name="movement" optional="hide" />
+                                    <field name="parking_brake_state" optional="hide" />
+                                    <field name="central_lock" optional="hide" />
+                                    <field name="isf_check_engine_indicator" optional="hide" />
+                                    <field name="gsm_signal" optional="hide" />
+                                    <field name="active_gsm_operator" optional="hide" />
+                                    <field name="sleep_mode" optional="hide" />
+                                    <field name="gnss_status" optional="hide" />
+                                    <field name="gnss_pdop" optional="hide" />
+                                    <field name="gnss_hdop" optional="hide" />
+                                    <field name="external_voltage" optional="hide" />
+                                    <field name="battery_voltage" optional="hide" />
+                                    <field name="battery_current" optional="hide" />
+                                    <field name="auto_geofence" optional="hide" />
+                                    <field name="control_state_flags" optional="hide" />
+                                    <field name="iccid1" optional="hide" />
+                                    <field name="event_id" optional="hide" />
+                                    <field name="event_type" optional="hide" />
+                                    <field name="priority" optional="hide" />
+                                    <field name="address" optional="hide" />
+                                </list>
+                            </field>
+                        </page>
+                        <!-- Pestaña History Route
+                        <page string="History Route">
+                            <geoengine>
+                                <field name="history_route" 
+                                        string="History Route" 
+                                        options='{"color": "#0000FF", "strokeWidth": 4}'/>
+                            </geoengine>
+                        </page> -->
+                    </notebook>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+
+    <!-- Acción para mostrar los dispositivos GPS en vistas list y form -->
+    <record id="action_gps_tracking_device" model="ir.actions.act_window">
+        <field name="name">GPS Tracking Devices</field>
+        <field name="res_model">gps.tracking.device</field>
+        <field name="view_mode">list,form,geoengine</field>
+    </record>
+
+    <!-- Registro del dispositivo GPS -->
+    <record id="gps_tracking_device_test1" model="gps.tracking.device">
+        <field name="imei">867060038729378</field>
+    </record>
+
+        <!-- Registro del dispositivo GPS -->
+    <record id="gps_tracking_device_test2" model="gps.tracking.device">
+        <field name="imei">867060038729377</field>
+    </record>
+
+</odoo>
