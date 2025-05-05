@@ -1,5 +1,8 @@
-from odoo import fields, models
+from odoo import fields, models, api
 from psycopg2.extensions import AsIs
+import logging
+
+_logger = logging.getLogger(__name__)
 
 class FleetVehicleLoanReport(models.Model):
     _name = 'fleet.vehicle.loan.report'
@@ -61,31 +64,66 @@ class FleetVehicleLoanReport(models.Model):
             ORDER BY ar.date_start desc
         """
     
-    def _check_is_populated(self, table):
-        self._cr.execute(
-            f"SELECT relispopulated FROM pg_class WHERE relname = '{table}' and relkind = 'm'"
-        )
-        res = self._cr.fetchone()
-        return res and res[0]
-
-    def refresh_concurrently(self):
-        table = AsIs(self._table)
-        if not self._check_is_populated(table):
-            self._cr.execute(f"REFRESH MATERIALIZED VIEW {table}")
-            return
-
-        self._cr.execute(f"REFRESH MATERIALIZED VIEW CONCURRENTLY {table}")
+    def refresh_materialized_view(self):
+        """Method called by the UI action to refresh the materialized view"""
+        _logger.info("Refreshing materialized view fleet_vehicle_loan_report")
+        try:
+            self.env.cr.execute("REFRESH MATERIALIZED VIEW fleet_vehicle_loan_report")
+            return {
+                'type': 'ir.actions.client',
+                'tag': 'display_notification',
+                'params': {
+                    'title': 'Éxito',
+                    'message': 'La vista materializada se ha actualizado correctamente',
+                    'type': 'success',
+                    'sticky': False,
+                }
+            }
+        except Exception as e:
+            _logger.error(f"Error refreshing materialized view: {e}")
+            return {
+                'type': 'ir.actions.client',
+                'tag': 'display_notification',
+                'params': {
+                    'title': 'Error',
+                    'message': f'Error al actualizar la vista materializada: {e}',
+                    'type': 'danger',
+                    'sticky': True,
+                }
+            }
 
     def init(self):
-        table = AsIs(self._table)
-        query = AsIs(self._query())
-        self._cr.execute(f"DROP MATERIALIZED view IF EXISTS {table} CASCADE")
-        if self._context.get("with_data"):
-            # Crea la vista materializada con datos
-            self._cr.execute(f"CREATE MATERIALIZED VIEW {table} AS ({query})")
+        """Initialize the materialized view"""
+        tools = self.env['ir.module.module']._get_module_tools()
+        self.env.cr.execute("SELECT to_regclass('fleet_vehicle_loan_report')")
+        if not self.env.cr.fetchone()[0]:
+            _logger.info("Creating materialized view fleet_vehicle_loan_report")
+            query = self._query()
+            try:
+                self.env.cr.execute(f"""
+                    CREATE MATERIALIZED VIEW fleet_vehicle_loan_report AS (
+                        {query}
+                    ) WITH DATA
+                """)
+                self.env.cr.execute("CREATE UNIQUE INDEX fleet_vehicle_loan_report_id_idx ON fleet_vehicle_loan_report (id)")
+                _logger.info("Successfully created materialized view fleet_vehicle_loan_report")
+            except Exception as e:
+                _logger.error(f"Error creating materialized view: {e}")
+                # Try to create a regular view instead as fallback
+                try:
+                    tools.drop_view_if_exists(self.env.cr, 'fleet_vehicle_loan_report')
+                    self.env.cr.execute(f"""
+                        CREATE OR REPLACE VIEW fleet_vehicle_loan_report AS (
+                            {query}
+                        )
+                    """)
+                    _logger.info("Created regular view as fallback")
+                except Exception as e2:
+                    _logger.error(f"Error creating fallback view: {e2}")
         else:
-            # Crea la vista materializada sin datos (para una actualización más rápida del módulo)
-            self._cr.execute(
-                f"CREATE MATERIALIZED VIEW {table} AS ({query}) WITH NO DATA"
-            )
-        self._cr.execute(f"CREATE UNIQUE INDEX {table}_id_idx ON {table} (id)")
+            # View already exists, try to refresh it
+            try:
+                self.env.cr.execute("REFRESH MATERIALIZED VIEW fleet_vehicle_loan_report")
+                _logger.info("Refreshed existing materialized view")
+            except Exception as e:
+                _logger.error(f"Error refreshing existing materialized view: {e}")
